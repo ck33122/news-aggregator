@@ -20,5 +20,5 @@ func parseFlags() {
 
 func init() {
 	flag.BoolVar(&showHelp, "help", false, "show help message and exit")
-	flag.StringVar(&configPath, "config", "app.ini", "path to configuration file")
+	flag.StringVar(&configPath, "config", "app.yaml", "path to configuration file")
 }

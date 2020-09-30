@@ -48,6 +48,7 @@ func InitLog() error {
 		return err
 	}
 	logger = logger.Named(appName)
+	logger.Info("application start", zap.String("appName", appName))
 
 	return nil
 }

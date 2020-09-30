@@ -8,9 +8,11 @@ import (
 
 // RssPostId is model of mapping guid from RSS item to PostId
 type RssPostId struct {
-	Guid   string    `sql:",pk"`
-	PostId uuid.UUID `sql:",type:uuid"`
-	Post   *Post     `pg:"rel:has-one"`
+	Guid      string    `pg:",notnull"`
+	ChannelId uuid.UUID `sql:",type:uuid"`
+	Channel   *Channel  `pg:"rel:has-one"`
+	PostId    uuid.UUID `sql:",type:uuid"`
+	Post      *Post     `pg:"rel:has-one"`
 }
 
 // Channel is model representing RSS channel.

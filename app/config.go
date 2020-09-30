@@ -2,8 +2,10 @@ package app
 
 import (
 	"flag"
+	"io/ioutil"
 
-	ini "gopkg.in/ini.v1"
+	uuid "github.com/satori/go.uuid"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -29,11 +31,17 @@ type DatabaseConfig struct {
 type ApiConfig struct {
 	Listen string
 }
+type ImportChannelConfig struct {
+	Address string
+	Id      uuid.UUID
+}
+
 type Config struct {
 	Environment Environment
 	Logger      LoggerConfig
 	Database    DatabaseConfig
 	Api         ApiConfig
+	Import      []ImportChannelConfig
 }
 
 // GetConfig returns static config instance.
@@ -50,5 +58,9 @@ func InitConfig() error {
 	if !flag.Parsed() {
 		parseFlags()
 	}
-	return ini.MapTo(&config, configPath)
+	configBytes, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(configBytes, &config)
 }

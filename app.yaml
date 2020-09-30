@@ -1,0 +1,21 @@
+environment: Development # Development or Production
+logger:
+  dir: logs # directory to save log files
+database:
+  user: postgres
+  password: postgres
+  database: news-aggregator
+  address: localhost:5432
+api:
+  listen: localhost:8080
+import:
+  - address: https://www.lostfilm.run/rss.xml
+    id: 6000d6c5-0375-4184-875f-b7041f2e5dff
+  - address: https://www.kinopoisk.ru/news.rss
+    id: b6a214bd-e700-46fb-b4b1-f812f7db5882
+  - address: https://meduza.io/rss/news
+    id: 3f878fb9-2234-4c5d-8faf-8d3e64cbafca
+  - address: https://habr.com/ru/rss/flows/develop/all/?fl=ru
+    id: da69f120-9e64-4eed-952a-f0d95d27167a
+  - address: https://shikimori.one/news_feed.rss
+    id: bd13a227-b8f0-4b00-882a-cb46d7cd66ea

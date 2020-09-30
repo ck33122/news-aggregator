@@ -27,10 +27,15 @@ func init() {
 		)`,
 		`create table rss_post_ids(
 			guid              text primary key,
+			channel_id        uuid not null,
 			post_id           uuid not null,
 			constraint fk_post
 				foreign key(post_id)
 				references posts(id)
+				on delete cascade,
+			constraint fk_channel
+				foreign key(channel_id)
+				references channels(id)
 				on delete cascade
 		)`,
 	)

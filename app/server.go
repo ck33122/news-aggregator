@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-pg/pg/v10"
-
 	routing "github.com/qiangxue/fasthttp-routing"
 	uuid "github.com/satori/go.uuid"
 	"github.com/valyala/fasthttp"
@@ -20,6 +18,11 @@ type Server struct {
 
 type RequestContext struct {
 	routingContext *routing.Context
+}
+
+type IActionError interface {
+	error
+	IsNotFound() bool
 }
 
 type ResponseError struct {
@@ -45,7 +48,7 @@ func NewServer() *Server {
 	}
 }
 
-func (server *Server) GetHandler(path string, handler func(c RequestContext) error) *Server {
+func (server *Server) GetHandler(path string, handler func(c RequestContext) error) {
 	server.apiGroup.Get(path, func(routingContext *routing.Context) error {
 		rc := RequestContext{routingContext: routingContext}
 		var err error
@@ -58,7 +61,6 @@ func (server *Server) GetHandler(path string, handler func(c RequestContext) err
 		}
 		return err
 	})
-	return server
 }
 
 // Run HTTP server on listenAddress.
@@ -74,6 +76,8 @@ func (server *Server) Run(listenAddress string) {
 	}
 }
 
+// UuidParam returns parsed id in UUID format from request uri.
+// name - uri context variable name.
 func (ctx RequestContext) UuidParam(name string) (res uuid.UUID, err error) {
 	str := ctx.routingContext.Param(name)
 	const uuidStringLength = 36
@@ -114,11 +118,9 @@ func (ctx RequestContext) AnswerInternalError(msg string) error {
 	return NewResponseError(http.StatusInternalServerError, msg)
 }
 
-func (ctx RequestContext) WrapDBError(action string, dbError error) error {
-	if dbError.Error() == pg.ErrNoRows.Error() {
-		return ctx.AnswerNotFound(fmt.Sprintf("%s: not found", action))
+func (ctx RequestContext) WrapActionsError(err IActionError) error {
+	if err.IsNotFound() {
+		return ctx.AnswerNotFound(err.Error())
 	}
-	message := fmt.Sprintf("%s: unknown error", action)
-	GetLog().Error(message, zap.Error(dbError), zap.String("action", action))
-	return ctx.AnswerInternalError(message)
+	return ctx.AnswerInternalError(err.Error())
 }
