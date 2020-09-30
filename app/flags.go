@@ -2,23 +2,17 @@ package app
 
 import (
 	"flag"
-	"os"
 )
 
-var (
-	configPath string
-	showHelp   bool
-)
-
-func parseFlags() {
-	flag.Parse()
-	if showHelp {
-		flag.Usage()
-		os.Exit(1)
-	}
+type Flags struct {
+	ConfigPath string
+	ShowHelp   bool
 }
 
-func init() {
-	flag.BoolVar(&showHelp, "help", false, "show help message and exit")
-	flag.StringVar(&configPath, "config", "app.yaml", "path to configuration file")
+func NewFlags() *Flags {
+	flags := &Flags{}
+	flag.BoolVar(&flags.ShowHelp, "help", false, "show help message and exit")
+	flag.StringVar(&flags.ConfigPath, "config", "app.yaml", "path to configuration file")
+	flag.Parse()
+	return flags
 }
