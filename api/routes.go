@@ -16,6 +16,7 @@ func Setup(server *app.Server, actions *app.Actions) {
 		}
 		return ctx.AnswerJson(mapToChannelsM(channels))
 	})
+
 	server.Get("/channels/<id>", func(ctx app.RequestContext) error {
 		id, idErr := ctx.UuidParam("id")
 		if idErr != nil {
@@ -27,6 +28,7 @@ func Setup(server *app.Server, actions *app.Actions) {
 		}
 		return ctx.AnswerJson(mapToChannelM(channel))
 	})
+
 	server.Get("/channels/<id>/posts", func(ctx app.RequestContext) error {
 		id, idErr := ctx.UuidParam("id")
 		if idErr != nil {
@@ -42,6 +44,7 @@ func Setup(server *app.Server, actions *app.Actions) {
 		}
 		return ctx.AnswerJson(mapToPostsM(posts))
 	})
+
 	server.Get("/posts", func(ctx app.RequestContext) error {
 		page, pageErr := ctx.IntQueryParam("p")
 		if pageErr != nil || page < 0 {
@@ -53,6 +56,7 @@ func Setup(server *app.Server, actions *app.Actions) {
 		}
 		return ctx.AnswerJson(mapToPostsM(posts))
 	})
+
 	server.Get("/posts/<id>", func(ctx app.RequestContext) error {
 		id, idErr := ctx.UuidParam("id")
 		if idErr != nil {

@@ -1,7 +1,8 @@
 # news-aggregator
-news aggregator backend in golang
 
-## task description
+Агрегатор RSS на golang.
+
+## Задача
 
 Нужно написать агрегатор новостей.
 
@@ -12,13 +13,122 @@ news aggregator backend in golang
 Результат - исходящий код агрегатора, а также рабочие адреса и правила парсинга, которые можно подать ему на вход.
 Язык Go. Хранилище - любая реляционная база.
 
-## rss sources
+## Конфигурация
 
+Конфигурация приложения едина для всех команд (см. [команды](#Команды)), описывается в формате yaml.
+При запуске любых команд, будет применяться конфигурация путь к которой указывается аргументом `-config`.
+Если аргумент не указан, то будет применяться конфигурация в текущей директории запуска из файла `app.yaml`.
+
+Пример:
+
+```yaml
+environment: Development # Development или Production
+logger:
+  dir: logs # каталог для логов, опционально (если нет - логи в файл писаться не будут)
+database:
+  user: postgres
+  password: postgres
+  database: news-aggregator
+  address: localhost:5432
+api:
+  listen: localhost:8080
+import:
+  - address: https://www.lostfilm.run/rss.xml
+    id: 6000d6c5-0375-4184-875f-b7041f2e5dff
+  - address: https://www.kinopoisk.ru/news.rss
+    id: b6a214bd-e700-46fb-b4b1-f812f7db5882
+  - address: https://meduza.io/rss/news
+    id: 3f878fb9-2234-4c5d-8faf-8d3e64cbafca
+  - address: https://habr.com/ru/rss/flows/develop/all/?fl=ru
+    id: da69f120-9e64-4eed-952a-f0d95d27167a
+  - address: https://shikimori.one/news_feed.rss
+    id: bd13a227-b8f0-4b00-882a-cb46d7cd66ea
+  - address: https://ilyabirman.ru/meanwhile/rss
+    id: 8d87e149-677f-48fe-8193-a0fdfaa5e382
 ```
-https://www.lostfilm.run/rss.xml
-https://www.kinopoisk.ru/news.rss
-https://meduza.io/rss/news
-https://habr.com/ru/rss/flows/develop/all/?fl=ru
-https://shikimori.one/news_feed.rss
-https://ilyabirman.ru/meanwhile/rss
+
+## Команды
+
+-   `cmd/migrate.go` - тулза для миграции БД. необходимо использовать её как минимум для первоначального запуска после создания базы данных. нужно подать аргумент `up` для накатывания всех миграций и `down` для отката.
+-   `cmd/api.go` - апи. в продакшене желательно прикрывать nginx-ом.
+-   `cmd/importer.go` - утилита импорта из rss источников: синхронизирует состояние базы с контентом rss. синхронизация происходит при запуске тулзы и затем автоматически каждые 10 минут. транзакции в синхронизации происходят на каждый rss channel и на каждый отдельный rss item.
+
+## Описание API
+
+-   `GET /api/channels` - отдаёт описание всех подключенных РСС каналов (без пагинации).
+
+Пример возвращаемого результата:
+
+```js
+[
+  {
+    "id": "b6a214bd-e700-46fb-b4b1-f812f7db5882", // идентификатор ленты из конфиг файла
+    "title": "КиноПоиск: Медиа",
+    "image": "https://www.kinopoisk.ru/images/logonew2.gif", // может отсутствовать
+    "description": "Свежая и интересная информация из мира кино: новости, репортажи, рецензии, трейлеры..."
+  },
+  ...
+]
+```
+
+-   `GET /api/channels/<id>` - отдаёт описание РСС канала по идентификатору `<id>`.
+
+Пример возвращаемого результата:
+
+```js
+{
+  "id": "b6a214bd-e700-46fb-b4b1-f812f7db5882", // идентификатор ленты из конфиг файла
+  "title": "КиноПоиск: Медиа",
+  "image": "https://www.kinopoisk.ru/images/logonew2.gif", // может отсутствовать
+  "description": "Свежая и интересная информация из мира кино: новости, репортажи, рецензии, трейлеры..."
+}
+```
+
+-   `GET /api/channels/<id>/posts` - отдаёт посты из РСС ленты с идентификатором `<id>` постранично (размер страницы 10) по убыванию дат. Имеет опциональный квери параметр `p` - номер текущей страницы (по дефолту - `0`).
+
+Пример возвращаемого результата:
+
+```js
+[
+  {
+    "id": "a506f2d3-1d8f-4f25-978e-5fa68b3407b2", // уникальный идентификатор, изначально отсутствует в rss ленте
+    "channel_id": "3f878fb9-2234-4c5d-8faf-8d3e64cbafca",
+    "published": "2020-10-01T23:34:12+05:00", // дата в подходящем формате для js new Date()
+    "title": "Армения отзовет посла в Тель-Авиве для консультаций из-за поставок израильского оружия в Азербайджан",
+    "image": "http://meduza.io/imgly/share/1601577252/news/2020/10/01/arme…sultatsiy-iz-za-postavok-izrailskogo-oruzhiya-v-azerbaydzhan", // может отсутствовать
+    "link": "https://meduza.io/news/2020/10/01/armeniya-otzovet-posla-v-t…sultatsiy-iz-za-postavok-izrailskogo-oruzhiya-v-azerbaydzhan",
+    "description": "МИД Армении принял решение отозвать своего посла из Израиля для консультаций. Об этом заявила пресс-секретарь ведомства Анна Нагдалян."
+  }
+  ...
+]
+```
+
+-   `GET /api/posts` - отдаёт посты из всех РСС лент постранично (размер страницы 10) по убыванию дат. Имеет опциональный квери параметр `p` - номер текущей страницы (по дефолту - `0`).
+
+Пример возвращаемого результата: так же как и в `GET /api/channels/<id>/posts`.
+
+-   `GET /api/posts/<id>` - отдаёт содержимое поста по идентификатору `<id>`.
+
+Пример возвращаемого результата:
+
+```js
+{
+  "id": "a506f2d3-1d8f-4f25-978e-5fa68b3407b2", // уникальный идентификатор, изначально отсутствует в rss ленте
+  "channel_id": "3f878fb9-2234-4c5d-8faf-8d3e64cbafca",
+  "published": "2020-10-01T23:34:12+05:00", // дата в подходящем формате для js new Date()
+  "title": "Армения отзовет посла в Тель-Авиве для консультаций из-за поставок израильского оружия в Азербайджан",
+  "image": "http://meduza.io/imgly/share/1601577252/news/2020/10/01/arme…sultatsiy-iz-za-postavok-izrailskogo-oruzhiya-v-azerbaydzhan", // может отсутствовать
+  "link": "https://meduza.io/news/2020/10/01/armeniya-otzovet-posla-v-t…sultatsiy-iz-za-postavok-izrailskogo-oruzhiya-v-azerbaydzhan",
+  "description": "МИД Армении принял решение отозвать своего посла из Израиля для консультаций. Об этом заявила пресс-секретарь ведомства Анна Нагдалян."
+}
+```
+
+### Ошибки
+
+При возникновении ошибки возвращается соотсветствующий статус код и сообщение в формате `json`:
+
+```js
+{
+  "error": "uri parameter id should be uuid, but value length was incorrect"
+}
 ```
