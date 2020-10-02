@@ -1,5 +1,7 @@
 # news-aggregator
 
+![build](https://github.com/ck33122/news-aggregator/workflows/build/badge.svg)
+
 Агрегатор RSS на golang.
 
 ## Задача

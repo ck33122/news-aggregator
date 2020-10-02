@@ -1,0 +1,33 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.13.1'
+
+      - run: go build api.go
+        working-directory: cmd
+      - run: go build importer.go
+        working-directory: cmd
+      - run: go build migrate.go
+        working-directory: cmd
+
+      - run: mkdir artifacts && mv api artifacts && mv importer artifacts && mv migrate artifacts
+        working-directory: cmd
+
+      - run: cp app.yaml cmd/artifacts
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: news-aggregator-bin
+          path: cmd/artifacts
