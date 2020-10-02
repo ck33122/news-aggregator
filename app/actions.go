@@ -14,6 +14,7 @@ type Actions struct {
 	getAllChannels           *pg.Stmt
 	getPostsOrdered          *pg.Stmt
 	getPostsByChannelOrdered *pg.Stmt
+	getPostsByTitle          *pg.Stmt
 	getPostById              *pg.Stmt
 	getChannelById           *pg.Stmt
 }
@@ -37,6 +38,16 @@ func NewActions(log *zap.Logger, db *pg.DB) (*Actions, error) {
 	actions.getPostsByChannelOrdered, err = db.Prepare(`
 		select * from posts
 		where channel_id = $1
+		order by publication_date desc
+		limit $2
+		offset $3
+	`)
+	if err != nil {
+		return nil, err
+	}
+	actions.getPostsByTitle, err = db.Prepare(`
+		select * from posts
+		where title ilike $1
 		order by publication_date desc
 		limit $2
 		offset $3
@@ -109,6 +120,18 @@ func (a *Actions) GetPostById(id uuid.UUID) (*Post, *ActionError) {
 		return nil, a.wrapDbError("get post by id", err)
 	}
 	return &post, nil
+}
+
+func (a *Actions) GetPostsByTitle(title string, page, pageSize int) ([]Post, *ActionError) {
+	var posts []Post
+	result, err := a.getPostsByTitle.Query(&posts, fmt.Sprintf("%%%s%%", title), pageSize, page*pageSize)
+	if err != nil {
+		return nil, a.wrapDbError("get posts by title", err)
+	}
+	if result.RowsReturned() == 0 {
+		posts = []Post{}
+	}
+	return posts, nil
 }
 
 func (a *Actions) wrapDbError(action string, err error) *ActionError {

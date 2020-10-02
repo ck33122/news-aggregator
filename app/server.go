@@ -117,6 +117,18 @@ func (ctx *RequestContext) IntQueryParam(name string) (res int, err error) {
 	return res, nil
 }
 
+// StringQueryParam returns string from request query params.
+// name - query variable name.
+func (ctx *RequestContext) StringQueryParam(name string) (res string, err error) {
+	bytes := ctx.routingContext.QueryArgs().Peek(name)
+	if len(bytes) == 0 {
+		message := fmt.Sprintf("query parameter %s should be string, but value was empty", name)
+		ctx.srv.log.Debug(message)
+		return res, NewResponseError(http.StatusBadRequest, message)
+	}
+	return string(bytes), nil
+}
+
 func (ctx *RequestContext) AnswerJson(value interface{}) error {
 	ctx.routingContext.SetContentType("application/json")
 	if err := json.NewEncoder(ctx.routingContext).Encode(value); err != nil {

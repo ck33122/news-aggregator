@@ -57,6 +57,22 @@ func Setup(server *app.Server, actions *app.Actions) {
 		return ctx.AnswerJson(mapToPostsM(posts))
 	})
 
+	server.Get("/posts/search", func(ctx app.RequestContext) error {
+		title, titleErr := ctx.StringQueryParam("title")
+		if titleErr != nil {
+			return titleErr
+		}
+		page, pageErr := ctx.IntQueryParam("p")
+		if pageErr != nil || page < 0 {
+			page = 0
+		}
+		posts, getErr := actions.GetPostsByTitle(title, page, pageSize)
+		if getErr != nil {
+			return ctx.WrapActionsError(getErr)
+		}
+		return ctx.AnswerJson(mapToPostsM(posts))
+	})
+
 	server.Get("/posts/<id>", func(ctx app.RequestContext) error {
 		id, idErr := ctx.UuidParam("id")
 		if idErr != nil {
