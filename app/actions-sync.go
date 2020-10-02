@@ -37,7 +37,7 @@ func (a *Actions) SyncChannel(channel Channel) *ActionError {
 }
 
 func (a *Actions) SyncPost(channel *Channel, post *Post, guid string) *ActionError {
-	const actionName = "sync channel"
+	const actionName = "sync post"
 
 	tx, err := a.db.Begin()
 	if err != nil {
@@ -65,7 +65,7 @@ func (a *Actions) SyncPost(channel *Channel, post *Post, guid string) *ActionErr
 		dbPost.Description != post.Description ||
 		dbPost.Link != post.Link ||
 		dbPost.Image != post.Image ||
-		dbPost.PublicationDate != post.PublicationDate {
+		!dbPost.PublicationDate.Equal(post.PublicationDate) {
 		a.log.Debug("updating post")
 		if _, err = tx.Model(post).WherePK().Update(); err != nil {
 			return a.wrapDbError(actionName, err)
@@ -77,7 +77,7 @@ func (a *Actions) SyncPost(channel *Channel, post *Post, guid string) *ActionErr
 
 	if !hasRssPostId {
 		if _, err = tx.Model(&rssPostId).Insert(); err != nil {
-			a.log.Debug("was no rrs post id, insertion failed", zap.Error(err))
+			a.log.Debug("was no rrs post id, insertion failed", zap.Error(err), zap.String("guid", guid))
 			return a.wrapDbError(actionName, err)
 		}
 	}

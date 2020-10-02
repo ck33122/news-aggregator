@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	routing "github.com/qiangxue/fasthttp-routing"
 	uuid "github.com/satori/go.uuid"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
 )
+
+const uuidStringLength = 36
 
 type Server struct {
 	log      *zap.Logger
@@ -31,6 +34,10 @@ type ResponseError struct {
 
 func (e *ResponseError) Error() string {
 	return e.message
+}
+
+type ResponseErrorM struct {
+	Error string `json:"error"`
 }
 
 func NewResponseError(statusCode int, message string) error {
@@ -57,7 +64,7 @@ func (srv *Server) Get(path string, handler func(c RequestContext) error) {
 			// if handler returned our 'status code' error, we can handle it nicely
 			if responseError, ok := err.(*ResponseError); ok {
 				routingContext.SetStatusCode(responseError.statusCode)
-				return rc.AnswerJson(struct{ Error string }{Error: responseError.message})
+				return rc.AnswerJson(ResponseErrorM{Error: responseError.message})
 			}
 		}
 		return err
@@ -80,18 +87,32 @@ func (srv *Server) Run() {
 // name - uri context variable name.
 func (ctx *RequestContext) UuidParam(name string) (res uuid.UUID, err error) {
 	str := ctx.routingContext.Param(name)
-	const uuidStringLength = 36
 	if len(str) != uuidStringLength {
-		return uuid.Nil, NewResponseError(
-			http.StatusBadRequest,
-			fmt.Sprintf("argument %s should be uuid, but value is incorrect", name),
-		)
+		message := fmt.Sprintf("uri parameter %s should be uuid, but value length was incorrect", name)
+		ctx.srv.log.Debug(message)
+		return uuid.Nil, NewResponseError(http.StatusBadRequest, message)
 	}
 	if res, err = uuid.FromString(str); err != nil {
-		return uuid.Nil, NewResponseError(
-			http.StatusBadRequest,
-			fmt.Sprintf("argument %s should be uuid, but value is incorrect", name),
-		)
+		message := fmt.Sprintf("uri parameter %s should be uuid, but value was incorrect", name)
+		ctx.srv.log.Debug(message)
+		return uuid.Nil, NewResponseError(http.StatusBadRequest, message)
+	}
+	return res, nil
+}
+
+// IntQueryParam returns parsed int from request query params.
+// name - query variable name.
+func (ctx *RequestContext) IntQueryParam(name string) (res int, err error) {
+	bytes := ctx.routingContext.QueryArgs().Peek(name)
+	if len(bytes) == 0 {
+		message := fmt.Sprintf("query parameter %s should be int, but value was empty", name)
+		ctx.srv.log.Debug(message)
+		return res, NewResponseError(http.StatusBadRequest, message)
+	}
+	if res, err = strconv.Atoi(string(bytes)); err != nil {
+		message := fmt.Sprintf("query parameter %s should be int, but value was incorrect", name)
+		ctx.srv.log.Debug(message)
+		return res, NewResponseError(http.StatusBadRequest, message)
 	}
 	return res, nil
 }

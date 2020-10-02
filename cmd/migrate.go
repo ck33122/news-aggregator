@@ -29,19 +29,37 @@ func main() {
 		fmt.Print(usageText)
 		os.Exit(2)
 	}
-
-	app.Init("news-aggregator-migrate")
-	defer app.Destroy()
-	log := app.GetLog().Sugar()
-
-	oldVersion, newVersion, err := migrations.Run(app.GetDB(), flag.Args()...)
+	flags := app.NewFlags()
+	if flags.ShowHelp {
+		flag.Usage()
+		return
+	}
+	config, err := app.NewConfig(flags.ConfigPath, "news-aggregator-migrate")
 	if err != nil {
-		log.Fatalf("error running migrations: %v", err)
+		fmt.Fprintf(os.Stderr, "error creating config object: %v", err)
+		os.Exit(1)
+	}
+	config.Logger.Dir = "" // write log files on migration isn't very good idea
+	log, err := app.NewLog(config)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating log object: %v", err)
+		os.Exit(1)
+	}
+	db, err := app.NewDB(log, config)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating database object: %v", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	oldVersion, newVersion, err := migrations.Run(db, flag.Args()...)
+	if err != nil {
+		log.Sugar().Fatalf("error running migrations: %v", err)
 	}
 
 	if newVersion != oldVersion {
-		log.Infof("migrated from version %d to %d", oldVersion, newVersion)
+		log.Sugar().Infof("migrated from version %d to %d", oldVersion, newVersion)
 	} else {
-		log.Infof("version is %d (not changed)", oldVersion)
+		log.Sugar().Infof("version is %d (not changed)", oldVersion)
 	}
 }

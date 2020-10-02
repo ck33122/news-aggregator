@@ -20,4 +20,5 @@ https://www.kinopoisk.ru/news.rss
 https://meduza.io/rss/news
 https://habr.com/ru/rss/flows/develop/all/?fl=ru
 https://shikimori.one/news_feed.rss
+https://ilyabirman.ru/meanwhile/rss
 ```

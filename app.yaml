@@ -19,3 +19,5 @@ import:
     id: da69f120-9e64-4eed-952a-f0d95d27167a
   - address: https://shikimori.one/news_feed.rss
     id: bd13a227-b8f0-4b00-882a-cb46d7cd66ea
+  - address: https://ilyabirman.ru/meanwhile/rss
+    id: 8d87e149-677f-48fe-8193-a0fdfaa5e382

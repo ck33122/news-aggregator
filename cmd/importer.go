@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -16,9 +17,10 @@ import (
 )
 
 var (
-	log     *zap.Logger
-	actions *app.Actions
-	config  *app.Config
+	log            *zap.Logger
+	actions        *app.Actions
+	config         *app.Config
+	rssTimeFormats = []string{time.RFC1123Z, time.RFC822, time.RFC1123}
 )
 
 func main() {
@@ -89,7 +91,15 @@ func updateRssTask() {
 				log.Error("error create post from rss item", zap.Error(err))
 				continue
 			}
-			if err := actions.SyncPost(&channel, post, item.GUID); err != nil {
+			guid := item.GUID
+			if len(guid) == 0 {
+				guid = item.Title
+			}
+			if len(guid) == 0 {
+				log.Error("error create post from rss item: there is not guid or title tags")
+				continue
+			}
+			if err := actions.SyncPost(&channel, post, guid); err != nil {
 				log.Error("error sync post", zap.Error(err))
 				continue
 			}
@@ -104,26 +114,25 @@ func newPostFromItem(channel *app.Channel, item *gofeed.Item) (*app.Post, error)
 	if item.Image != nil {
 		image = item.Image.URL
 	}
-
-	var published time.Time
-	publishedParsed := false
-	timeFormats := []string{time.RFC1123Z, time.RFC822, time.RFC1123}
-	for _, fmt := range timeFormats {
-		var err error
-		if published, err = time.Parse(fmt, item.Published); err == nil {
-			publishedParsed = true
-			break
+	if len(image) == 0 {
+		for _, enclosure := range item.Enclosures {
+			if len(enclosure.URL) != 0 && strings.HasPrefix(enclosure.Type, "image/") {
+				image = enclosure.URL
+				break
+			}
 		}
 	}
-	if !publishedParsed {
+
+	published, parsed := parseRssTime(item.Published)
+	if !parsed {
 		return nil, fmt.Errorf("can't parse date %v", item.Published)
 	}
 
 	return &app.Post{
 		Id:              uuid.NewV4(),
 		ChannelId:       channel.Id,
-		PublicationDate: published,
-		Title:           item.Title,
+		PublicationDate: *published,
+		Title:           strings.TrimSpace(item.Title),
 		Image:           image,
 		Link:            item.Link,
 		Description:     item.Description,
@@ -141,4 +150,13 @@ func newChannelFromFeed(channelConfig *app.ImportChannelConfig, feed *gofeed.Fee
 		Image:       image,
 		Description: feed.Description,
 	}
+}
+
+func parseRssTime(timeStr string) (*time.Time, bool) {
+	for _, fmt := range rssTimeFormats {
+		if result, err := time.Parse(fmt, timeStr); err == nil {
+			return &result, true
+		}
+	}
+	return nil, false
 }
